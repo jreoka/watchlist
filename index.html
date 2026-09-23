@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Cross's Watchlist</title>
 <style>
   :root{
@@ -87,8 +90,8 @@ const state = { media:"shows", status:"all", q:"", sort:"title", data:{shows:[],
 
 async function load(){
   const [s,m] = await Promise.all([
-    fetch("data/shows.json").then(r=>r.json()),
-    fetch("data/movies.json").then(r=>r.json())
+    fetch("data/shows.json", {cache:"no-store"}).then(r=>r.json()),
+    fetch("data/movies.json", {cache:"no-store"}).then(r=>r.json())
   ]);
   state.data = {shows:s, movies:m};
   renderStats(); renderChips(); render();
