@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchlist</title>
+<style>
+  :root{
+    --bg:#0b1020; --surface:#131a30; --surface2:#1a2340; --line:#263052;
+    --text:#e8ebf5; --muted:#8b94b3; --accent:#5b6cff;
+    --green:#3ecf6f; --amber:#e8a33d; --red:#e05d5d; --gray:#6b7390;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; min-height:100vh}
+  header{padding:2.5rem 1.5rem 1rem; text-align:center}
+  header h1{font-size:2rem; letter-spacing:.5px}
+  header h1 .dot{color:var(--accent)}
+  .stats{display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; margin-top:1rem}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.35rem .9rem; font-size:.85rem; color:var(--muted)}
+  .stat b{color:var(--text); font-weight:600}
+  .tabs{display:flex; gap:.5rem; justify-content:center; margin:1.5rem 0 1rem}
+  .tab{background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:.5rem 1.4rem; font-size:.95rem; cursor:pointer}
+  .tab.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+  .controls{display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; padding:0 1.5rem; margin-bottom:.4rem}
+  .chips{display:flex; gap:.4rem; flex-wrap:wrap; justify-content:center}
+  .chip{background:var(--surface); border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:.35rem .85rem; font-size:.82rem; cursor:pointer}
+  .chip.active{background:var(--surface2); border-color:var(--accent); color:var(--text)}
+  .searchrow{display:flex; gap:.6rem; justify-content:center; margin:.9rem 0 1.4rem; padding:0 1.5rem; flex-wrap:wrap}
+  input[type=search],select{background:var(--surface); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:.55rem .9rem; font-size:.9rem; outline:none}
+  input[type=search]{width:min(320px,80vw)}
+  input[type=search]:focus,select:focus{border-color:var(--accent)}
+  select{cursor:pointer}
+  main{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1rem; padding:0 max(1.5rem,5vw) 4rem; max-width:1200px; margin:0 auto}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:.5rem}
+  .card .top{display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem}
+  .card h2{font-size:1.02rem; line-height:1.3; font-weight:600}
+  .card .year{color:var(--muted); font-size:.82rem; font-weight:400}
+  .score{font-size:.9rem; color:var(--amber); white-space:nowrap; font-weight:600}
+  .score .na{color:var(--gray); font-weight:400}
+  .pill{align-self:flex-start; font-size:.72rem; font-weight:600; letter-spacing:.4px; text-transform:uppercase; border-radius:999px; padding:.22rem .7rem}
+  .pill.watching{background:rgba(62,207,111,.14); color:var(--green)}
+  .pill.completed{background:rgba(91,108,255,.16); color:#9aa5ff}
+  .pill.plan_to_watch{background:rgba(232,163,61,.14); color:var(--amber)}
+  .pill.on_hold{background:rgba(107,115,144,.16); color:#a7aec9}
+  .pill.dropped{background:rgba(224,93,93,.14); color:var(--red)}
+  .card .notes{color:var(--muted); font-size:.85rem; line-height:1.45}
+  .card .progress{color:var(--muted); font-size:.8rem}
+  .empty{grid-column:1/-1; text-align:center; color:var(--muted); padding:4rem 1rem; font-size:1rem}
+  footer{text-align:center; color:var(--gray); font-size:.78rem; padding:0 1rem 2rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Watchlist<span class="dot">.</span></h1>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-media="shows">Shows</button>
+  <button class="tab" data-media="movies">Movies</button>
+</div>
+
+<div class="controls">
+  <div class="chips" id="chips"></div>
+</div>
+<div class="searchrow">
+  <input type="search" id="q" placeholder="Search titles or notes…">
+  <select id="sort">
+    <option value="title">Sort: Title</option>
+    <option value="score">Sort: Score</option>
+    <option value="added">Sort: Recently added</option>
+  </select>
+</div>
+
+<main id="grid"></main>
+<footer>Managed by Hitori — just say what you watched.</footer>
+
+<script>
+const STATUSES = [
+  ["all","All"],["watching","Watching"],["completed","Completed"],
+  ["plan_to_watch","Plan to watch"],["on_hold","On hold"],["dropped","Dropped"]
+];
+const LABEL = Object.fromEntries(STATUSES);
+const state = { media:"shows", status:"all", q:"", sort:"title", data:{shows:[],movies:[]} };
+
+async function load(){
+  const [s,m] = await Promise.all([
+    fetch("data/shows.json").then(r=>r.json()),
+    fetch("data/movies.json").then(r=>r.json())
+  ]);
+  state.data = {shows:s, movies:m};
+  renderStats(); renderChips(); render();
+}
+
+function renderStats(){
+  const all = [...state.data.shows, ...state.data.movies];
+  const c = st => all.filter(e=>e.status===st).length;
+  const scored = all.filter(e=>typeof e.score==="number");
+  const avg = scored.length ? (scored.reduce((a,e)=>a+e.score,0)/scored.length).toFixed(1) : "—";
+  document.getElementById("stats").innerHTML =
+    `<span class="stat"><b>${all.length}</b> total</span>`+
+    `<span class="stat"><b>${c("watching")}</b> watching</span>`+
+    `<span class="stat"><b>${c("completed")}</b> completed</span>`+
+    `<span class="stat"><b>${c("plan_to_watch")}</b> plan to watch</span>`+
+    `<span class="stat"><b>${avg}</b> avg score</span>`;
+}
+
+function renderChips(){
+  document.getElementById("chips").innerHTML = STATUSES.map(([v,l])=>{
+    const n = v==="all" ? state.data[state.media].length
+      : state.data[state.media].filter(e=>e.status===v).length;
+    return `<button class="chip${state.status===v?" active":""}" data-s="${v}">${l} · ${n}</button>`;
+  }).join("");
+  document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{state.status=b.dataset.s; renderChips(); render();});
+}
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function render(){
+  let items = state.data[state.media].slice();
+  if(state.status!=="all") items = items.filter(e=>e.status===state.status);
+  if(state.q){
+    const q = state.q.toLowerCase();
+    items = items.filter(e=>(e.title+" "+(e.notes||"")).toLowerCase().includes(q));
+  }
+  items.sort((a,b)=>{
+    if(state.sort==="score") return (b.score??-1)-(a.score??-1);
+    if(state.sort==="added") return String(b.date_added||"").localeCompare(String(a.date_added||""));
+    return a.title.localeCompare(b.title);
+  });
+  const grid = document.getElementById("grid");
+  if(!items.length){
+    grid.innerHTML = `<div class="empty">Nothing here yet.</div>`;
+    return;
+  }
+  grid.innerHTML = items.map(e=>`
+    <div class="card">
+      <div class="top">
+        <h2>${esc(e.title)}${e.year?` <span class="year">${e.year}</span>`:""}</h2>
+        <span class="score">${typeof e.score==="number" ? "★ "+e.score : '<span class="na">—</span>'}</span>
+      </div>
+      <span class="pill ${e.status}">${LABEL[e.status]||e.status}</span>
+      ${e.progress?`<div class="progress">${esc(e.progress)}</div>`:""}
+      ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
+    </div>`).join("");
+}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); state.media=t.dataset.media; state.status="all";
+  renderChips(); render();
+});
+document.getElementById("q").oninput = e=>{state.q=e.target.value; render();};
+document.getElementById("sort").onchange = e=>{state.sort=e.target.value; render();};
+load();
+</script>
+</body>
+</html>
