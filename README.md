@@ -9,6 +9,18 @@ you finished, started, or want to watch next.
 Open `index.html` (or the GitHub Pages site) — filter by status, search, sort
 by title / score / recently added.
 
+## URL routing
+
+Tabs and filters are real paths, so views are linkable: `/watching`,
+`/completed`, `/plan-to-watch`, `/movies`, `/movies/completed`, … — the app
+reads `location.pathname` on load and `pushState`s on every tab/filter
+change (back/forward buttons work).
+
+GitHub Pages serves `404.html` for unknown paths, so `404.html` is kept as
+a copy of `index.html` — **after editing `index.html`, run
+`cp index.html 404.html`** before committing. Data fetches use root-absolute
+paths (`/data/…`) so they resolve from any route.
+
 ## Data
 
 - `data/shows.json` — every show, one object per title
