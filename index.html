@@ -7,78 +7,205 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Cross's Watchlist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b1020; --surface:#131a30; --surface2:#1a2340; --line:#263052;
-    --text:#e8ebf5; --muted:#8b94b3; --accent:#5b6cff;
-    --green:#3ecf6f; --amber:#e8a33d; --red:#e05d5d; --gray:#6b7390;
+    --bg:#080b16; --bg2:#0c1122; --surface:#121832; --surface2:#1a2247;
+    --line:rgba(255,255,255,.08); --text:#eef1fb; --muted:#98a1c4; --faint:#5f6790;
+    --accent:#5b6cff; --accent2:#8b5cf6;
+    --green:#34d399; --amber:#fbbf24; --red:#f87171; --gray:#8b93b8;
+    --radius:18px;
   }
   *{box-sizing:border-box; margin:0; padding:0}
-  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; min-height:100vh}
-  header{padding:2.5rem 1.5rem 1rem; text-align:center}
-  header h1{font-size:2rem; letter-spacing:.5px}
-  header h1 .dot{color:var(--accent)}
-  .stats{display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; margin-top:1rem}
-  .stat{background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:.35rem .9rem; font-size:.85rem; color:var(--muted)}
-  .stat b{color:var(--text); font-weight:600}
-  .tabs{display:flex; gap:.5rem; justify-content:center; margin:1.5rem 0 1rem}
-  .tab{background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:.5rem 1.4rem; font-size:.95rem; cursor:pointer}
-  .tab.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
-  .controls{display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; padding:0 1.5rem; margin-bottom:.4rem}
-  .chips{display:flex; gap:.4rem; flex-wrap:wrap; justify-content:center}
-  .chip{background:var(--surface); border:1px solid var(--line); color:var(--muted); border-radius:999px; padding:.35rem .85rem; font-size:.82rem; cursor:pointer}
-  .chip.active{background:var(--surface2); border-color:var(--accent); color:var(--text)}
-  .searchrow{display:flex; gap:.6rem; justify-content:center; margin:.9rem 0 1.4rem; padding:0 1.5rem; flex-wrap:wrap}
-  input[type=search],select{background:var(--surface); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:.55rem .9rem; font-size:.9rem; outline:none}
-  input[type=search]{width:min(320px,80vw)}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(700px 340px at 15% -60px, rgba(91,108,255,.22), transparent 70%),
+      radial-gradient(600px 300px at 85% -40px, rgba(139,92,246,.16), transparent 70%);
+  }
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:blur(18px) saturate(1.3); -webkit-backdrop-filter:blur(18px) saturate(1.3);
+    background:rgba(8,11,22,.72); border-bottom:1px solid var(--line);
+  }
+  .head-inner{max-width:1280px; margin:0 auto; padding:1.1rem max(1.25rem,4vw) .9rem}
+  .title-row{display:flex; align-items:baseline; justify-content:space-between; gap:1rem; flex-wrap:wrap}
+  h1{font-size:1.65rem; font-weight:800; letter-spacing:-.02em}
+  h1 .dot{color:var(--accent)}
+  .subtitle{color:var(--faint); font-size:.82rem; margin-top:.15rem}
+  .stats{display:flex; gap:2rem; margin-top:.85rem; flex-wrap:wrap}
+  .stat{display:flex; flex-direction:column; gap:.1rem}
+  .stat b{font-size:1.35rem; font-weight:700; letter-spacing:-.02em}
+  .stat span{font-size:.7rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:600}
+
+  /* ---------- controls ---------- */
+  .controls{
+    position:sticky; top:0; z-index:40; /* sits under header when scrolled */
+    background:rgba(8,11,22,.72); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-bottom:1px solid var(--line);
+  }
+  .controls-inner{
+    max-width:1280px; margin:0 auto; padding:.8rem max(1.25rem,4vw);
+    display:flex; gap:.9rem; align-items:center; flex-wrap:wrap;
+  }
+  .seg{display:flex; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:3px}
+  .seg button{
+    border:0; background:transparent; color:var(--muted); font:inherit; font-weight:600; font-size:.86rem;
+    border-radius:999px; padding:.45rem 1.25rem; cursor:pointer; transition:all .18s;
+  }
+  .seg button.active{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; box-shadow:0 4px 14px rgba(91,108,255,.4)}
+  .chips{display:flex; gap:.4rem; flex-wrap:wrap}
+  .chip{
+    background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--muted);
+    border-radius:999px; padding:.4rem .85rem; font-size:.8rem; font-weight:500; cursor:pointer; transition:all .15s; font-family:inherit;
+  }
+  .chip:hover{border-color:rgba(255,255,255,.2); color:var(--text)}
+  .chip.active{background:rgba(91,108,255,.18); border-color:var(--accent); color:var(--text)}
+  .spacer{flex:1}
+  input[type=search],select{
+    background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:.55rem .9rem; font-size:.87rem; outline:none; font-family:inherit;
+  }
+  input[type=search]{width:230px}
+  input[type=search]::placeholder{color:var(--faint)}
   input[type=search]:focus,select:focus{border-color:var(--accent)}
   select{cursor:pointer}
-  main{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; padding:0 max(1.5rem,5vw) 4rem; max-width:1200px; margin:0 auto}
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:1rem; display:flex; gap:1rem}
-  .poster{width:76px; aspect-ratio:2/3; object-fit:cover; border-radius:10px; flex-shrink:0; background:var(--surface2)}
-  .card .info{display:flex; flex-direction:column; gap:.45rem; min-width:0}
-  .card .top{display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem}
-  .card h2{font-size:1.02rem; line-height:1.3; font-weight:600}
-  .card .year{color:var(--muted); font-size:.82rem; font-weight:400}
-  .score{font-size:.9rem; color:var(--amber); white-space:nowrap; font-weight:600}
-  .score .na{color:var(--gray); font-weight:400}
-  .pill{align-self:flex-start; font-size:.72rem; font-weight:600; letter-spacing:.4px; text-transform:uppercase; border-radius:999px; padding:.22rem .7rem}
-  .pill.watching{background:rgba(62,207,111,.14); color:var(--green)}
-  .pill.completed{background:rgba(91,108,255,.16); color:#9aa5ff}
-  .pill.plan_to_watch{background:rgba(232,163,61,.14); color:var(--amber)}
-  .pill.on_hold{background:rgba(107,115,144,.16); color:#a7aec9}
-  .pill.dropped{background:rgba(224,93,93,.14); color:var(--red)}
-  .card .notes{color:var(--muted); font-size:.85rem; line-height:1.45}
-  .card .progress{color:var(--muted); font-size:.8rem}
-  .empty{grid-column:1/-1; text-align:center; color:var(--muted); padding:4rem 1rem; font-size:1rem}
-  footer{text-align:center; color:var(--gray); font-size:.78rem; padding:0 1rem 2rem}
+  select option{background:var(--surface); color:var(--text)}
+  .count-line{max-width:1280px; margin:0 auto; padding:1.1rem max(1.25rem,4vw) 0; color:var(--faint); font-size:.82rem}
+
+  /* ---------- poster grid ---------- */
+  main{
+    position:relative; z-index:1;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:1.3rem 1.1rem;
+    padding:1rem max(1.25rem,4vw) 5rem; max-width:1280px; margin:0 auto;
+  }
+  .card{
+    position:relative; border-radius:var(--radius); overflow:hidden; cursor:pointer;
+    background:var(--surface); border:1px solid var(--line);
+    transition:transform .22s cubic-bezier(.2,.7,.3,1.2), box-shadow .22s, border-color .22s;
+    animation:rise .5s cubic-bezier(.2,.7,.3,1) backwards;
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(18px)} to{opacity:1; transform:none}}
+  .card:hover{transform:translateY(-6px); box-shadow:0 18px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(91,108,255,.35); border-color:transparent}
+  .card img.poster{display:block; width:100%; aspect-ratio:2/3; object-fit:cover; background:var(--surface2)}
+  .card .shade{
+    position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(4,6,14,.94) 0%, rgba(4,6,14,.55) 34%, transparent 58%);
+    pointer-events:none;
+  }
+  .card .meta{position:absolute; left:0; right:0; bottom:0; padding:.75rem .8rem .8rem}
+  .card h2{font-size:.92rem; font-weight:600; line-height:1.28; letter-spacing:-.01em; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .card .sub{color:var(--muted); font-size:.76rem; margin-top:.2rem; display:flex; gap:.45rem; align-items:center}
+  .badge{
+    position:absolute; font-size:.68rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    border-radius:999px; padding:.28rem .65rem; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  }
+  .badge.status{top:.6rem; left:.6rem; background:rgba(4,6,14,.62); border:1px solid var(--line)}
+  .badge.status.watching{color:var(--green); border-color:rgba(52,211,153,.45)}
+  .badge.status.completed{color:#a5b0ff; border-color:rgba(91,108,255,.5)}
+  .badge.status.plan_to_watch{color:var(--amber); border-color:rgba(251,191,36,.45)}
+  .badge.status.on_hold{color:#b9c0dc; border-color:rgba(139,147,184,.45)}
+  .badge.status.dropped{color:var(--red); border-color:rgba(248,113,113,.45)}
+  .badge.score{top:.6rem; right:.6rem; background:rgba(4,6,14,.62); border:1px solid var(--line); color:#ffd97a; font-variant-numeric:tabular-nums}
+  .badge.score.hi{color:var(--green); border-color:rgba(52,211,153,.45)}
+  .badge.score.mid{color:var(--amber); border-color:rgba(251,191,36,.4)}
+  .badge.score.lo{color:var(--muted)}
+  .empty{grid-column:1/-1; text-align:center; color:var(--muted); padding:5rem 1rem}
+
+  /* ---------- modal ---------- */
+  .modal-bg{
+    position:fixed; inset:0; z-index:100; background:rgba(3,5,12,.7);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:1.25rem;
+    animation:fade .18s ease-out;
+  }
+  @keyframes fade{from{opacity:0} to{opacity:1}}
+  .modal{
+    background:linear-gradient(160deg,#151c3d,#0d1229); border:1px solid rgba(255,255,255,.1);
+    border-radius:22px; max-width:640px; width:100%; max-height:88vh; overflow:auto;
+    display:flex; gap:1.5rem; padding:1.5rem; position:relative;
+    animation:pop .24s cubic-bezier(.2,.7,.3,1.2); box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  @keyframes pop{from{opacity:0; transform:scale(.94) translateY(10px)} to{opacity:1; transform:none}}
+  .modal img.big{width:190px; aspect-ratio:2/3; object-fit:cover; border-radius:14px; flex-shrink:0; box-shadow:0 12px 30px rgba(0,0,0,.5)}
+  .modal .detail{min-width:0; display:flex; flex-direction:column; gap:.7rem}
+  .modal h2{font-size:1.45rem; font-weight:700; letter-spacing:-.02em; line-height:1.2}
+  .modal .year{color:var(--muted); font-weight:500}
+  .pill-row{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center}
+  .pill{font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-radius:999px; padding:.32rem .8rem; border:1px solid}
+  .pill.watching{color:var(--green); border-color:rgba(52,211,153,.5); background:rgba(52,211,153,.1)}
+  .pill.completed{color:#a5b0ff; border-color:rgba(91,108,255,.5); background:rgba(91,108,255,.12)}
+  .pill.plan_to_watch{color:var(--amber); border-color:rgba(251,191,36,.5); background:rgba(251,191,36,.1)}
+  .pill.on_hold{color:#b9c0dc; border-color:rgba(139,147,184,.5); background:rgba(139,147,184,.1)}
+  .pill.dropped{color:var(--red); border-color:rgba(248,113,113,.5); background:rgba(248,113,113,.1)}
+  .score-big{font-size:1.05rem; font-weight:700; color:#ffd97a}
+  .score-big .na{color:var(--faint); font-weight:500}
+  .stars{color:var(--accent); letter-spacing:.15em; font-size:.85rem}
+  .modal .notes{color:#c3c9e4; font-size:.92rem; line-height:1.6}
+  .modal .fine{color:var(--faint); font-size:.78rem}
+  .close{
+    position:absolute; top:.8rem; right:.8rem; width:32px; height:32px; border-radius:50%;
+    border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--muted);
+    font-size:1rem; cursor:pointer; line-height:1;
+  }
+  .close:hover{color:var(--text); border-color:rgba(255,255,255,.25)}
+  @media (max-width:560px){
+    .modal{flex-direction:column; align-items:center; text-align:center}
+    .modal .detail{align-items:center}
+    .pill-row{justify-content:center}
+    main{grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:1rem .8rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important; transition:none !important}
+  }
+  footer{position:relative; z-index:1; text-align:center; color:var(--faint); font-size:.78rem; padding:0 1rem 2.5rem}
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Cross's Watchlist<span class="dot">.</span></h1>
-  <div class="stats" id="stats"></div>
+  <div class="head-inner">
+    <div class="title-row">
+      <div>
+        <h1>Cross's Watchlist<span class="dot">.</span></h1>
+        <div class="subtitle">Every show &amp; film, tracked.</div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
 </header>
 
-<div class="tabs">
-  <button class="tab active" data-media="shows">Shows</button>
-  <button class="tab" data-media="movies">Movies</button>
-</div>
-
 <div class="controls">
-  <div class="chips" id="chips"></div>
-</div>
-<div class="searchrow">
-  <input type="search" id="q" placeholder="Search titles or notes…">
-  <select id="sort">
-    <option value="title">Sort: Title</option>
-    <option value="score">Sort: Score</option>
-    <option value="added">Sort: Recently added</option>
-  </select>
+  <div class="controls-inner">
+    <div class="seg" id="seg">
+      <button class="active" data-media="shows">Shows</button>
+      <button data-media="movies">Movies</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="spacer"></div>
+    <input type="search" id="q" placeholder="Search titles or notes…">
+    <select id="sort">
+      <option value="title">Title</option>
+      <option value="score">Top scored</option>
+      <option value="added">Recently added</option>
+    </select>
+  </div>
 </div>
 
+<div class="count-line" id="count"></div>
 <main id="grid"></main>
 <footer>Managed by Hitori — just say what you watched.</footer>
+<div id="modal-root"></div>
 
 <script>
 const STATUSES = [
@@ -103,11 +230,11 @@ function renderStats(){
   const scored = all.filter(e=>typeof e.score==="number");
   const avg = scored.length ? (scored.reduce((a,e)=>a+e.score,0)/scored.length).toFixed(1) : "—";
   document.getElementById("stats").innerHTML =
-    `<span class="stat"><b>${all.length}</b> total</span>`+
-    `<span class="stat"><b>${c("watching")}</b> watching</span>`+
-    `<span class="stat"><b>${c("completed")}</b> completed</span>`+
-    `<span class="stat"><b>${c("plan_to_watch")}</b> plan to watch</span>`+
-    `<span class="stat"><b>${avg}</b> avg score</span>`;
+    `<div class="stat"><b>${all.length}</b><span>Total</span></div>`+
+    `<div class="stat"><b>${c("watching")}</b><span>Watching</span></div>`+
+    `<div class="stat"><b>${c("completed")}</b><span>Completed</span></div>`+
+    `<div class="stat"><b>${c("plan_to_watch")}</b><span>Plan to watch</span></div>`+
+    `<div class="stat"><b>${avg}</b><span>Avg score</span></div>`;
 }
 
 function renderChips(){
@@ -120,9 +247,12 @@ function renderChips(){
 }
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function bigPoster(e){ return e.poster ? e.poster.replace("/w342/","/w500/") : ""; }
+function scoreClass(s){ return typeof s!=="number" ? "lo" : s>=8 ? "hi" : s>=6 ? "mid" : "lo"; }
 
+let items = [];
 function render(){
-  let items = state.data[state.media].slice();
+  items = state.data[state.media].slice();
   if(state.status!=="all") items = items.filter(e=>e.status===state.status);
   if(state.q){
     const q = state.q.toLowerCase();
@@ -134,27 +264,63 @@ function render(){
     return a.title.localeCompare(b.title);
   });
   const grid = document.getElementById("grid");
-  if(!items.length){
-    grid.innerHTML = `<div class="empty">Nothing here yet.</div>`;
-    return;
-  }
-  grid.innerHTML = items.map(e=>`
-    <div class="card">
-      ${e.poster?`<img class="poster" src="${esc(e.poster)}" alt="" loading="lazy">`:""}
-      <div class="info">
-        <div class="top">
-          <h2>${esc(e.title)}${e.year?` <span class="year">${e.year}</span>`:""}</h2>
-          <span class="score">${typeof e.score==="number" ? "★ "+e.score : '<span class="na">—</span>'}</span>
-        </div>
-        <span class="pill ${e.status}">${LABEL[e.status]||e.status}</span>
-        ${e.progress?`<div class="progress">${esc(e.progress)}</div>`:""}
-        ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
+  document.getElementById("count").textContent =
+    `${items.length} ${state.media==="shows"?"show":"movie"}${items.length===1?"":"s"}` +
+    (state.status!=="all" ? ` · ${LABEL[state.status].toLowerCase()}` : "");
+  if(!items.length){ grid.innerHTML = `<div class="empty">Nothing here yet.</div>`; return; }
+  grid.innerHTML = items.map((e,i)=>`
+    <div class="card" style="animation-delay:${Math.min(i*28,560)}ms" data-i="${i}" tabindex="0" role="button" aria-label="${esc(e.title)}">
+      ${e.poster?`<img class="poster" src="${esc(e.poster)}" alt="" loading="lazy">`:`<img class="poster" alt="">`}
+      <div class="shade"></div>
+      <span class="badge status ${e.status}">${LABEL[e.status]||e.status}</span>
+      <span class="badge score ${scoreClass(e.score)}">${typeof e.score==="number" ? "★ "+e.score : "—"}</span>
+      <div class="meta">
+        <h2>${esc(e.title)}</h2>
+        <div class="sub">${e.year?`<span>${e.year}</span>`:""}${e.progress?`<span>${esc(e.progress)}</span>`:""}</div>
       </div>
     </div>`).join("");
+  grid.querySelectorAll(".card").forEach(c=>{
+    const open = ()=>openModal(items[+c.dataset.i]);
+    c.onclick = open;
+    c.onkeydown = ev=>{ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault(); open();} };
+  });
 }
 
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+function starsFor(s){
+  if(typeof s!=="number") return "";
+  const full = Math.round(s/2);
+  return `<div class="stars">${"★".repeat(full)}${"☆".repeat(5-full)}</div>`;
+}
+
+function openModal(e){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-bg" id="mbg">
+      <div class="modal" role="dialog" aria-label="${esc(e.title)}">
+        <button class="close" id="mclose" aria-label="Close">✕</button>
+        ${e.poster?`<img class="big" src="${esc(bigPoster(e))}" alt="">`:""}
+        <div class="detail">
+          <h2>${esc(e.title)}${e.year?` <span class="year">${e.year}</span>`:""}</h2>
+          <div class="pill-row">
+            <span class="pill ${e.status}">${LABEL[e.status]||e.status}</span>
+            <span class="score-big">${typeof e.score==="number" ? "★ "+e.score+" / 10" : '<span class="na">Unscored</span>'}</span>
+          </div>
+          ${starsFor(e.score)}
+          ${e.progress?`<div class="fine">${esc(e.progress)}</div>`:""}
+          ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
+          ${e.date_added?`<div class="fine">Added ${esc(e.date_added)}</div>`:""}
+        </div>
+      </div>
+    </div>`;
+  const close = ()=>{ root.innerHTML=""; document.removeEventListener("keydown", onKey); };
+  const onKey = ev=>{ if(ev.key==="Escape") close(); };
+  document.getElementById("mbg").onclick = ev=>{ if(ev.target.id==="mbg") close(); };
+  document.getElementById("mclose").onclick = close;
+  document.addEventListener("keydown", onKey);
+}
+
+document.querySelectorAll("#seg button").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.remove("active"));
   t.classList.add("active"); state.media=t.dataset.media; state.status="all";
   renderChips(); render();
 });
