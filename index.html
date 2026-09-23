@@ -30,8 +30,10 @@
   input[type=search]{width:min(320px,80vw)}
   input[type=search]:focus,select:focus{border-color:var(--accent)}
   select{cursor:pointer}
-  main{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1rem; padding:0 max(1.5rem,5vw) 4rem; max-width:1200px; margin:0 auto}
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:.5rem}
+  main{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; padding:0 max(1.5rem,5vw) 4rem; max-width:1200px; margin:0 auto}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:1rem; display:flex; gap:1rem}
+  .poster{width:76px; aspect-ratio:2/3; object-fit:cover; border-radius:10px; flex-shrink:0; background:var(--surface2)}
+  .card .info{display:flex; flex-direction:column; gap:.45rem; min-width:0}
   .card .top{display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem}
   .card h2{font-size:1.02rem; line-height:1.3; font-weight:600}
   .card .year{color:var(--muted); font-size:.82rem; font-weight:400}
@@ -135,13 +137,16 @@ function render(){
   }
   grid.innerHTML = items.map(e=>`
     <div class="card">
-      <div class="top">
-        <h2>${esc(e.title)}${e.year?` <span class="year">${e.year}</span>`:""}</h2>
-        <span class="score">${typeof e.score==="number" ? "★ "+e.score : '<span class="na">—</span>'}</span>
+      ${e.poster?`<img class="poster" src="${esc(e.poster)}" alt="" loading="lazy">`:""}
+      <div class="info">
+        <div class="top">
+          <h2>${esc(e.title)}${e.year?` <span class="year">${e.year}</span>`:""}</h2>
+          <span class="score">${typeof e.score==="number" ? "★ "+e.score : '<span class="na">—</span>'}</span>
+        </div>
+        <span class="pill ${e.status}">${LABEL[e.status]||e.status}</span>
+        ${e.progress?`<div class="progress">${esc(e.progress)}</div>`:""}
+        ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
       </div>
-      <span class="pill ${e.status}">${LABEL[e.status]||e.status}</span>
-      ${e.progress?`<div class="progress">${esc(e.progress)}</div>`:""}
-      ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
     </div>`).join("");
 }
 

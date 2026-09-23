@@ -26,7 +26,7 @@ Entry shape:
   "notes": "That finale…",
   "progress": "S2E3",
   "date_added": "2026-09-22",
-  "poster": null
+  "poster": "https://image.tmdb.org/t/p/w342/…"
 }
 ```
 

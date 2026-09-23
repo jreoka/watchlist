@@ -2,15 +2,15 @@
 """Import a Yamtrack CSV export into this repo's watchlist data files.
 
 Usage:
-    python3 scripts/import_yamtrack.py /path/to/yamtrack_export.csv [--shows] [--movies]
+    python3 scripts/import_yamtrack.py /path/to/yamtrack_export.csv
 
-Reads the export, drops everything that isn't a show or movie (video games,
-etc.), maps Yamtrack statuses onto the repo's statuses, and writes
-data/shows.json and data/movies.json. Existing entries are kept and matched
-by (title, year) so re-imports don't duplicate — imported rows update them.
+Reads the export, drops video games and per-episode tracking rows, maps
+Yamtrack statuses onto the repo's statuses, and writes data/shows.json and
+data/movies.json. Titles already present are merged (never duplicated):
+the first-seen row wins, later rows only fill in a missing score.
 
-Yamtrack's export columns aren't contractual, so this sniffs the header for
-likely names instead of hard-coding them.
+Expected Yamtrack columns: media_id, source, media_type, title, image,
+season_number, episode_number, score, status, notes, start_date, progress.
 """
 
 import argparse
@@ -28,7 +28,6 @@ MOVIES_JSON = ROOT / "data" / "movies.json"
 STATUS_MAP = {
     "completed": "completed",
     "in progress": "watching",
-    "in_progress": "watching",
     "watching": "watching",
     "planning": "plan_to_watch",
     "plan to watch": "plan_to_watch",
@@ -43,6 +42,8 @@ TYPE_MAP = {
     "season": "shows",
     "anime": "shows",
     "movie": "movies",
+    "game": None,      # video games live elsewhere
+    "episode": None,    # per-episode rows; the show/season row covers it
 }
 
 
@@ -50,14 +51,22 @@ def norm(s):
     return (s or "").strip().lower()
 
 
-def pick(row, *names):
-    """Return the first non-empty cell among candidate column names."""
-    lowered = {norm(k): v for k, v in row.items()}
-    for n in names:
-        v = lowered.get(n)
-        if v not in (None, ""):
-            return v.strip()
-    return ""
+def poster_url(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    # TMDB w500 posters are heavy for thumbnails; w342 is plenty.
+    return raw.replace("/t/p/w500/", "/t/p/w342/")
+
+
+def progress_text(row):
+    sn, en = row.get("season_number", "").strip(), row.get("episode_number", "").strip()
+    if sn and en:
+        return f"S{sn}E{en}"
+    p = (row.get("progress") or "").strip()
+    if p.isdigit():
+        return f"{p} episodes watched"
+    return p
 
 
 def load(path):
@@ -73,72 +82,67 @@ def main():
 
     shows = load(SHOWS_JSON)
     movies = load(MOVIES_JSON)
-    seen = {(norm(e.get("title")), str(e.get("year") or ""))} for e in shows + movies]
+    index = {(norm(e.get("title"))): e for e in shows + movies}
 
     imported = {"shows": 0, "movies": 0}
+    merged = 0
     skipped = {}
-    updated = 0
 
     with open(args.csv_path, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            title = pick(row, "title", "name")
+            title = (row.get("title") or "").strip()
             if not title:
                 continue
-            media_type = norm(pick(row, "media_type", "media type", "type", "kind"))
-            bucket = TYPE_MAP.get(media_type)
+            bucket = TYPE_MAP.get(norm(row.get("media_type")))
             if bucket is None:
-                skipped[media_type or "?"] = skipped.get(media_type or "?", 0) + 1
+                mt = norm(row.get("media_type")) or "?"
+                skipped[mt] = skipped.get(mt, 0) + 1
                 continue
 
-            status = STATUS_MAP.get(norm(pick(row, "status")), "plan_to_watch")
-            score_raw = pick(row, "score", "rating")
+            status = STATUS_MAP.get(norm(row.get("status")), "plan_to_watch")
             try:
-                score = float(score_raw) if score_raw else None
+                score = float(row["score"]) if (row.get("score") or "").strip() else None
             except ValueError:
                 score = None
 
-            year_raw = pick(row, "year", "release_year", "start_year")
-            try:
-                year = int(float(year_raw)) if year_raw else None
-            except ValueError:
-                year = None
+            start = (row.get("start_date") or "").strip()
+            date_added = start[:10] if len(start) >= 10 else date.today().isoformat()
+            source = norm(row.get("source"))
+
+            existing = index.get(norm(title))
+            if existing:
+                # Fill in blanks only; first-seen row wins.
+                if existing.get("score") is None and score is not None:
+                    existing["score"] = score
+                if not existing.get("poster"):
+                    existing["poster"] = poster_url(row.get("image"))
+                merged += 1
+                continue
 
             entry = {
                 "title": title,
-                "year": year,
-                "tmdb_id": None,
+                "year": None,
+                "tmdb_id": int(row["media_id"]) if source == "tmdb" and (row.get("media_id") or "").strip().isdigit() else None,
                 "status": status,
                 "score": score,
-                "notes": pick(row, "notes", "comment") or "",
-                "date_added": date.today().isoformat(),
-                "poster": None,
+                "notes": (row.get("notes") or "").strip(),
+                "date_added": date_added,
+                "poster": poster_url(row.get("image")),
             }
             if bucket == "shows":
-                entry["progress"] = ""
+                entry["progress"] = progress_text(row)
 
-            key = (norm(title), str(year or ""))
-            target = shows if bucket == "shows" else movies
-            existing = next(
-                (e for e in target if (norm(e.get("title")), str(e.get("year") or "")) == key),
-                None,
-            )
-            if existing:
-                # Refresh status/score from the export, keep notes/progress.
-                existing["status"] = status
-                if score is not None:
-                    existing["score"] = score
-                updated += 1
-            else:
-                target.append(entry)
-                imported[bucket] += 1
+            (shows if bucket == "shows" else movies).append(entry)
+            index[norm(title)] = entry
+            imported[bucket] += 1
 
     for path, items in ((SHOWS_JSON, shows), (MOVIES_JSON, movies)):
         path.write_text(json.dumps(items, indent=2, ensure_ascii=False) + "\n")
 
     print(f"imported: {imported['shows']} shows, {imported['movies']} movies")
-    print(f"updated existing: {updated}")
+    print(f"merged duplicates: {merged}")
     if skipped:
-        print("skipped (not shows/movies): " + ", ".join(f"{k} x{v}" for k, v in sorted(skipped.items())))
+        print("skipped: " + ", ".join(f"{k} x{v}" for k, v in sorted(skipped.items())))
 
 
 if __name__ == "__main__":
