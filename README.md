@@ -46,6 +46,35 @@ Statuses: `watching` · `completed` · `plan_to_watch` · `on_hold` · `dropped`
 Score is 0–10, or `null` when unrated. `progress` is shows-only and freeform
 (`S2E3`, `Season 1`, …).
 
+## Updating it (this is how Hitori does it)
+
+All updates go through one script, so the JSON never gets hand-edited into an
+invalid state. It prints a diff, commits, and pushes to `main` in one step:
+
+```bash
+# progress on a show
+./scripts/update.py --status "Sousou no Frieren" --watching-eps 4
+./scripts/update.py --status "Severance" --episode 3 --season 2      # -> "S2E3"
+
+# status changes
+./scripts/update.py --status "Dandadan" --set completed --score 9
+./scripts/update.py --status "Clarkson's Farm" --set dropped
+
+# new entries
+./scripts/update.py --title "Some New Show" --new --started --year 2024
+./scripts/update.py --title "Some Film" --new --type movie --set plan_to_watch
+```
+
+Flags: `--status/--title`, `--type show|movie`, `--set`, `--watching-eps`,
+`--season`, `--episode`, `--progress`, `--score`, `--notes`, `--new`,
+`--started`, `--year`, `--tmdb-id`, `--poster`, `--date-added`, `-n` (dry run),
+`--no-commit`, `--message`.
+
+Titles are matched case/whitespace-insensitively, then by substring, then
+fuzzily — and an ambiguous match is a hard error listing the candidates, so a
+vague "frieren" can never edit the wrong row. The script also resyncs
+`404.html` from `index.html` automatically if they ever drift.
+
 ## Importing from Yamtrack
 
 ```bash
